@@ -1,12 +1,12 @@
 import { INestApplication } from '@nestjs/common';
 import { FastifyAdapter } from '@nestjs/platform-fastify';
 import { DocumentBuilder, OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
-import { Test } from '@nestjs/testing';
+import { Test, TestingModule } from '@nestjs/testing';
 import 'reflect-metadata';
 import request from 'supertest';
 import { RedocModule } from './redoc-module';
 
-describe('redoc-module', () => {
+describe('test redoc-module.ts file', () => {
   let app: INestApplication;
   let swagger: OpenAPIObject;
 
@@ -14,7 +14,7 @@ describe('redoc-module', () => {
     expect(RedocModule).toBeTruthy();
   });
 
-  describe('express app', () => {
+  describe('test express app setup', () => {
     beforeEach(async () => {
       const module = await Test.createTestingModule({}).compile();
       app = module.createNestApplication();
@@ -25,22 +25,22 @@ describe('redoc-module', () => {
     });
 
     it('should run the setup (non-normalized path)', async () => {
-      expect(RedocModule.setup('some/path', app, swagger, {})).resolves.toBe(
-        undefined
-      );
+      await expect(
+        RedocModule.setup('some/path', app, swagger, {})
+      ).resolves.toBe(undefined);
     });
     it('should run the setup (normalized path)', async () => {
-      expect(RedocModule.setup('/some/path', app, swagger, {})).resolves.toBe(
-        undefined
-      );
+      await expect(
+        RedocModule.setup('/some/path', app, swagger, {})
+      ).resolves.toBe(undefined);
     });
     it('should run the setup (normalized path 2)', async () => {
-      expect(RedocModule.setup('/some/path/', app, swagger, {})).resolves.toBe(
-        undefined
-      );
+      await expect(
+        RedocModule.setup('/some/path/', app, swagger, {})
+      ).resolves.toBe(undefined);
     });
-    it('shoudld be fine with the setup with logo options', async () => {
-      expect(
+    it('should be fine with the setup with logo options', async () => {
+      await expect(
         RedocModule.setup('some/path', app, swagger, {
           logo: {
             url: 'http://localhost:3333/test.png',
@@ -65,7 +65,7 @@ describe('redoc-module', () => {
     });
   });
 
-  describe('fastify app', () => {
+  describe('test fastify app setup', () => {
     beforeEach(async () => {
       const module = await Test.createTestingModule({}).compile();
       app = module.createNestApplication(new FastifyAdapter());
@@ -83,28 +83,33 @@ describe('redoc-module', () => {
       }
     });
   });
-
   describe('weird error', () => {
+    let app: INestApplication;
+    let swagger: OpenAPIObject;
+
     beforeEach(async () => {
-      const module = await Test.createTestingModule({}).compile();
-      app = module.createNestApplication({
-        initHttpServer: jest.fn(),
-        getHttpServer: jest.fn(),
-      } as any);
+      const moduleFixture: TestingModule = await Test.createTestingModule({
+        imports: [RedocModule],
+      }).compile();
+
+      app = moduleFixture.createNestApplication(new FastifyAdapter());
+      await app.init();
       const options = new DocumentBuilder()
         .setDescription('Test swagger Doc')
         .build();
       swagger = SwaggerModule.createDocument(app, options);
     });
 
-    it('should throw an error for now', async () => {
+    afterEach(async () => {
+      await app.close();
+    });
+
+    it('should throw an error for an invalid uri', async () => {
       try {
         await RedocModule.setup('some/path', app, swagger, {
           logo: { url: 'notaUrl' },
         });
       } catch (error) {
-        // console.log(error);
-        // expect(typeof error).toBe(TypeError);
         expect(error.message).toBe('"logo.url" must be a valid uri');
       }
     });
